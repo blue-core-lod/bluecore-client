@@ -14,6 +14,7 @@ import typer
 from bluecore_client.cli import ui
 from bluecore_client.cli.context import client, die, settings
 from bluecore_client.errors import BluecoreError
+from bluecore_client.resources import profiles
 
 app = typer.Typer(name="load", help="Load BIBFRAME data in bulk.", no_args_is_help=True)
 
@@ -87,6 +88,11 @@ def load_profiles(
     URI and rewrites the profile's resource template to match. Note this
     creates profiles rather than updating existing ones, so running it twice
     will load two copies.
+
+    A profile names the profiles it nests by URI, and the API does not rewrite
+    those on create -- so copied profiles arrive still pointing at the source
+    deployment. A second pass repoints them at their local counterparts, which
+    is what lets the nesting survive the copy.
     """
     from bluecore_client import BluecoreClient
 
@@ -110,6 +116,11 @@ def load_profiles(
         ui.warn(f"Dry run: {len(incoming)} profiles, nothing written")
         return
 
+    # Source URI -> what the local instance minted for it, which is what the
+    # second pass rewrites references through.
+    remap: dict[str, str] = {}
+    created_profiles = []
+
     for profile in incoming:
         data = profile.get("data")
         if data is None:
@@ -121,6 +132,10 @@ def load_profiles(
             ui.failure(f"{profile.get('uri', '')}: {error}")
             continue
         loaded += 1
+        created_profiles.append(created)
+        source_uri, local_uri = profile.get("uri"), created.get("uri")
+        if source_uri and local_uri:
+            remap[source_uri] = local_uri
         if settings.verbose:
             ui.note(f"  {profile.get('uri', '')} {ui.ARROW} {created.get('uri', '')}")
 
@@ -128,6 +143,71 @@ def load_profiles(
         ui.success(f"Loaded {ui.count(loaded, 'profile')}")
     else:
         ui.warn(f"Loaded {loaded} of {len(incoming)} profiles")
+
+    _relink(target, created_profiles, remap, host)
+
+
+def _relink(
+    target, created_profiles: list[dict], remap: dict[str, str], host: str
+) -> None:
+    """Repoint each copied profile's nesting references at their local counterparts.
+
+    This has to run after everything is created: a reference names a profile by
+    URI, and the local URI is not known until the API mints it.
+
+    Rewrites what the API stored rather than what the source sent. Creating a
+    profile re-homes its own ``@id`` onto the minted URI, and sending the source
+    document back would undo that.
+    """
+    relinked = 0
+    missing: set[str] = set()
+    not_a_uri: set[str] = set()
+
+    for created in created_profiles:
+        data = created.get("data")
+        if data is None:
+            continue
+        rewritten, unresolved = profiles.relink(data, remap)
+        not_a_uri |= {ref for ref in unresolved if not ref.startswith("http")}
+        missing |= {ref for ref in unresolved if ref.startswith("http")}
+        if rewritten == data:
+            continue
+        uuid = created.get("uuid")
+        if not uuid:
+            continue
+        try:
+            target.profiles.update(str(uuid), rewritten)
+        except BluecoreError as error:
+            ui.failure(f"{created.get('uri', '')}: could not relink: {error}")
+            continue
+        relinked += 1
+
+    if relinked:
+        ui.success(f"Relinked {ui.count(relinked, 'profile')}")
+    if missing:
+        ui.warn(
+            "1 reference names a profile that was not copied"
+            if len(missing) == 1
+            else f"{len(missing)} references name profiles that were not copied"
+        )
+        if settings.verbose:
+            for ref in sorted(missing):
+                ui.note(f"  {ref}")
+    if not_a_uri:
+        # bluecore-models resolves nesting by URI only. A hasResourceId string
+        # means the source still holds pre-0.34.0 data, so there is nothing
+        # here to repoint -- say that rather than reporting it as missing.
+        counted = (
+            "1 reference is an id rather than a URI"
+            if len(not_a_uri) == 1
+            else f"{len(not_a_uri)} references are ids rather than URIs"
+        )
+        ui.warn(
+            f"{counted}; {host} may need migrating before its nesting can be copied"
+        )
+        if settings.verbose:
+            for ref in sorted(not_a_uri):
+                ui.note(f"  {ref}")
 
 
 def _report(result: dict, message: str) -> None:
