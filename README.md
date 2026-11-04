@@ -10,16 +10,23 @@ plain Python dictionaries; turtle, RDF/XML and N-Triples are available too.
 
 ## Install
 
+For the `bluecore` command and the library:
+
 ```shell
-pip install bluecore-client
+pip install 'bluecore-client[cli]'
 ```
 
 Or, with [uv], to get the `bluecore` command on its own without installing into
 a project:
 
 ```shell
-uv tool install bluecore-client
+uv tool install 'bluecore-client[cli]'
 ```
+
+To use only the Python library, as a service or plugin would, leave off
+`[cli]`. That skips typer, rich and python-dotenv. Without python-dotenv a
+`.env` file isn't read, so pass settings directly or set them in the
+environment.
 
 ## Try it
 
@@ -281,6 +288,11 @@ closed promptly:
 with BluecoreClient() as client:
     ...
 ```
+
+Redirects aren't followed unless you ask. A redirect can re-send your token
+and request body somewhere you didn't choose, or quietly turn a POST into a
+GET, so a 3xx raises `Redirected` instead. Pass `follow_redirects=True` if you
+want them followed; the `bluecore` command does.
 
 ## Reading
 
