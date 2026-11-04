@@ -11,8 +11,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
-import dotenv
-
 #: Keycloak realm the API authenticates against.
 REALM = "bluecore"
 
@@ -76,12 +74,25 @@ def resolve(
     With nothing configured at all, this points at
     :data:`DEFAULT_BLUECORE_URL`, so ``BluecoreClient()`` does something useful
     out of the box.
+
+    ``load_dotenv`` first reads a ``.env`` from the working directory. That
+    needs python-dotenv, which comes with the ``cli`` extra; without it the
+    environment is used as it stands.
     """
     if load_dotenv:
-        # usecwd=True matters. Without it python-dotenv searches upward from
-        # the file that called it -- this module, inside site-packages -- so a
-        # .env in the directory you are actually working in is never found.
-        dotenv.load_dotenv(dotenv.find_dotenv(usecwd=True))
+        try:
+            import dotenv
+        except ModuleNotFoundError:
+            # python-dotenv comes with the cli extra. A library caller without
+            # it configures through arguments or the real environment, so
+            # there is no .env to read.
+            dotenv = None
+        if dotenv is not None:
+            # usecwd=True matters. Without it python-dotenv searches upward
+            # from the file that called it -- this module, inside
+            # site-packages -- so a .env in the directory you are actually
+            # working in is never found.
+            dotenv.load_dotenv(dotenv.find_dotenv(usecwd=True))
 
     env = os.environ.get
 

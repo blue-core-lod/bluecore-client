@@ -107,6 +107,10 @@ class Settings:
             timeout=self.timeout,
             load_dotenv=False,
             event_hooks=_trace_hooks() if self.verbose else None,
+            # The API redirects between slashed and unslashed collection paths,
+            # and the CLI is driven by a person typing paths, not a plugin
+            # forwarding someone else's token.
+            follow_redirects=True,
         )
         self._client_anonymous = anonymous
         return self._client

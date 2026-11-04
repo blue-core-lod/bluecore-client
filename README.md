@@ -414,10 +414,11 @@ except NotFound as error:
     print(error)  # Work nope not found (GET .../works/nope)
 ```
 
-`AuthError`, `PermissionDenied`, `ValidationError`, `ConnectionFailed`, and
-`APIError` are the others. `APIError` keeps the `status_code` and the underlying
-`response`; `ConnectionFailed` means the API couldn't be reached at all, so a
-timeout or refused connection never surfaces as a bare traceback.
+`AuthError`, `PermissionDenied`, `ValidationError`, `Redirected`,
+`ConnectionFailed`, and `APIError` are the others. `APIError` keeps the
+`status_code` and the underlying `response`; `Redirected` adds the `location`
+the API pointed to; `ConnectionFailed` means the API couldn't be reached at
+all, so a timeout or refused connection never surfaces as a bare traceback.
 
 ## Development
 

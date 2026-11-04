@@ -57,6 +57,27 @@ class PermissionDenied(APIError):
     """The token is valid but lacks the role this operation requires."""
 
 
+class Redirected(APIError):
+    """The API answered with a redirect the client was not told to follow.
+
+    Not following is the default, because a redirect would carry the caller's
+    token to whatever host ``Location`` names. ``location`` is where the API
+    pointed, and ``response`` is the 3xx itself, for a caller that wants to
+    decide for itself.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        location: str,
+        status_code: int | None = None,
+        response: httpx.Response | None = None,
+    ):
+        super().__init__(message, status_code=status_code, response=response)
+        self.location = location
+
+
 def _detail(response: httpx.Response) -> str:
     """Pull FastAPI's ``detail`` out of an error response, readably.
 
@@ -95,6 +116,18 @@ def _detail(response: httpx.Response) -> str:
 
 def raise_for_status(response: httpx.Response) -> None:
     """Raise the most specific error that fits ``response``."""
+    if response.is_redirect:  # False if follow_redirects=True
+        request = response.request
+        location = response.headers["Location"]
+        raise Redirected(
+            f"{response.status_code} redirect to {location} was not followed "
+            f"({request.method} {request.url}); pass follow_redirects=True to "
+            "BluecoreClient to follow it",
+            location=location,
+            status_code=response.status_code,
+            response=response,
+        )
+
     if not response.is_error:
         return
 
