@@ -63,6 +63,28 @@ class TestWorkCommands:
         assert result.exit_code == 0
         assert "Le mal joli" in result.stdout
 
+    def test_a_redirect_stops_the_command_and_names_the_location(
+        self, httpx_mock, token_response
+    ):
+        """A redirect fails cleanly, naming where the API pointed.
+
+        The CLI doesn't follow redirects either. A BLUECORE_URL of http:// is
+        the usual cause, so the user needs the https:// Location to fix it.
+        """
+        token_response()
+        location = f"{API_URL}/works/w1/"
+        httpx_mock.add_response(
+            url=f"{API_URL}/works/w1",
+            status_code=301,
+            headers={"Location": location},
+        )
+
+        result = invoke("work", "view", "w1")
+
+        assert result.exit_code == 1
+        assert location in result.output
+        assert not httpx_mock.get_requests(url=location)
+
     def test_view_with_json_emits_parseable_output(self, httpx_mock, token_response):
         token_response()
         httpx_mock.add_response(url=f"{API_URL}/works/w1", json=WORK_GRAPH)

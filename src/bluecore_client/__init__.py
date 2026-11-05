@@ -18,6 +18,7 @@ from bluecore_client.errors import (
     ConnectionFailed,
     NotFound,
     PermissionDenied,
+    Redirected,
     ValidationError,
 )
 from bluecore_client.pagination import Page, Pages
@@ -35,6 +36,7 @@ __all__ = [
     "Page",
     "Pages",
     "PermissionDenied",
+    "Redirected",
     "SearchType",
     "ValidationError",
 ]

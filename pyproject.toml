@@ -1,6 +1,6 @@
 [project]
 name = "bluecore-client"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python client and command line interface for the Blue Core API"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -22,12 +22,16 @@ classifiers = [
 ]
 dependencies = [
   "httpx>=0.28",
-  "typer>=0.15.4",
-  "rich>=13.0",
-  "python-dotenv>=1.1.0",
   # For turtle / RDF-XML / N-Triples output of search and list results, which
   # the API only serves as JSON-LD.
   "rdflib>=7.1.3",
+]
+
+[project.optional-dependencies]
+cli = [
+  "typer>=0.15.4",
+  "rich>=13.0",
+  "python-dotenv>=1.1.0",
 ]
 
 [project.urls]
@@ -37,10 +41,12 @@ Issues = "https://github.com/blue-core-lod/bluecore-client/issues"
 "Blue Core API" = "https://github.com/blue-core-lod/bluecore_api"
 
 [project.scripts]
-bluecore = "bluecore_client.cli.app:app"
+bluecore = "bluecore_client.cli:main"
 
 [dependency-groups]
 dev = [
+  # The tests exercise the CLI, and not every workflow syncs with --all-extras.
+  "bluecore-client[cli]",
   "ruff>=0.11.6",
   "pytest>=8.3.4",
   "pytest-httpx>=0.35.0",

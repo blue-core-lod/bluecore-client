@@ -10,16 +10,23 @@ plain Python dictionaries; turtle, RDF/XML and N-Triples are available too.
 
 ## Install
 
+For the `bluecore` command and the library:
+
 ```shell
-pip install bluecore-client
+pip install 'bluecore-client[cli]'
 ```
 
 Or, with [uv], to get the `bluecore` command on its own without installing into
 a project:
 
 ```shell
-uv tool install bluecore-client
+uv tool install 'bluecore-client[cli]'
 ```
+
+To use only the Python library, as a service or plugin would, leave off
+`[cli]`. That skips typer, rich and python-dotenv. Without python-dotenv a
+`.env` file isn't read, so pass settings directly or set them in the
+environment.
 
 ## Try it
 
@@ -282,6 +289,11 @@ with BluecoreClient() as client:
     ...
 ```
 
+Redirects are never followed. The client's paths match the API's routes, so a
+3xx almost always means the URL is wrong, such as `http://` where the API
+wants `https://`, and following it could quietly turn a POST into a GET. The
+client raises `Redirected` instead, with the `location` the API pointed to.
+
 ## Reading
 
 ```python
@@ -402,10 +414,11 @@ except NotFound as error:
     print(error)  # Work nope not found (GET .../works/nope)
 ```
 
-`AuthError`, `PermissionDenied`, `ValidationError`, `ConnectionFailed`, and
-`APIError` are the others. `APIError` keeps the `status_code` and the underlying
-`response`; `ConnectionFailed` means the API couldn't be reached at all, so a
-timeout or refused connection never surfaces as a bare traceback.
+`AuthError`, `PermissionDenied`, `ValidationError`, `Redirected`,
+`ConnectionFailed`, and `APIError` are the others. `APIError` keeps the
+`status_code` and the underlying `response`; `Redirected` adds the `location`
+the API pointed to; `ConnectionFailed` means the API couldn't be reached at
+all, so a timeout or refused connection never surfaces as a bare traceback.
 
 ## Development
 

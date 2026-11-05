@@ -96,7 +96,7 @@ class TestDotenvDiscovery:
         has to be the one captured at import time -- by now the module
         attribute is the stub.
         """
-        monkeypatch.setattr(config.dotenv, "load_dotenv", real_load_dotenv)
+        monkeypatch.setattr("dotenv.load_dotenv", real_load_dotenv)
         monkeypatch.chdir(directory)
         return config.resolve()
 

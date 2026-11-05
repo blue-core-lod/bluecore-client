@@ -57,6 +57,26 @@ class PermissionDenied(APIError):
     """The token is valid but lacks the role this operation requires."""
 
 
+class Redirected(APIError):
+    """The API answered with a redirect, which the client never follows.
+
+    The client's paths match the API's routes, so a redirect usually means
+    the configured URL is wrong, such as ``http://`` instead of ``https://``.
+    ``location`` is where the API pointed, and ``response`` is the 3xx itself.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        location: str,
+        status_code: int | None = None,
+        response: httpx.Response | None = None,
+    ):
+        super().__init__(message, status_code=status_code, response=response)
+        self.location = location
+
+
 def _detail(response: httpx.Response) -> str:
     """Pull FastAPI's ``detail`` out of an error response, readably.
 
@@ -95,6 +115,18 @@ def _detail(response: httpx.Response) -> str:
 
 def raise_for_status(response: httpx.Response) -> None:
     """Raise the most specific error that fits ``response``."""
+    if response.is_redirect:
+        request = response.request
+        location = response.headers["Location"]
+        raise Redirected(
+            f"{response.status_code} redirect to {location} "
+            f"({request.method} {request.url}); check that the Blue Core URL "
+            "is correct, e.g. https rather than http",
+            location=location,
+            status_code=response.status_code,
+            response=response,
+        )
+
     if not response.is_error:
         return
 

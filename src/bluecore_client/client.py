@@ -62,6 +62,11 @@ class BluecoreClient:
 
     Pass ``anonymous=True`` to skip authentication entirely, which works for
     another deployment's public read endpoints.
+
+    Redirects are never followed. The client's paths match the API's routes,
+    so a redirect means the configured URL is wrong (``http://`` rather than
+    ``https://``, say) and raises :class:`~bluecore_client.errors.Redirected`
+    with the ``Location`` the server gave.
     """
 
     def __init__(
@@ -102,8 +107,9 @@ class BluecoreClient:
             auth=self.auth,
             timeout=timeout,
             transport=transport,
-            # The API redirects between slashed and unslashed collection paths.
-            follow_redirects=True,
+            # Never follow: on a 301/302 httpx turns a POST into a GET and
+            # drops the body. raise_for_status() raises Redirected instead.
+            follow_redirects=False,
             event_hooks=event_hooks or {},
         )
 
