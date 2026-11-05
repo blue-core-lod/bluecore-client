@@ -178,6 +178,34 @@ class TestLoadProfiles:
         subjects = {node.get("@id") for node in body}
         assert LOCAL_PARENT in subjects and PARENT not in subjects
 
+    def test_the_source_is_read_anonymously_and_follows_redirects(
+        self, copying, monkeypatch
+    ):
+        """The client reading the other deployment follows redirects, anonymously.
+
+        load profiles builds its own client for the source instead of using the
+        CLI's, so it needs its own opt-in. Being anonymous is what makes that
+        safe: there is no token for a redirect to carry anywhere.
+        """
+        import bluecore_client
+
+        built = []
+
+        class Recording(bluecore_client.BluecoreClient):
+            def __init__(self, **kwargs):
+                built.append(kwargs)
+                super().__init__(**kwargs)
+
+        monkeypatch.setattr(bluecore_client, "BluecoreClient", Recording)
+        copying()
+
+        result = runner.invoke(app, [*BASE, *CREDENTIALS, "load", "profiles", REMOTE])
+
+        assert result.exit_code == 0, result.output
+        [source] = built
+        assert source["anonymous"] is True
+        assert source["follow_redirects"] is True
+
     def test_a_profile_with_nothing_to_relink_is_not_put_back(self, copying):
         mock = copying(nests=(), expect_put=False)
 
