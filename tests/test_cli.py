@@ -63,24 +63,27 @@ class TestWorkCommands:
         assert result.exit_code == 0
         assert "Le mal joli" in result.stdout
 
-    def test_view_follows_the_apis_redirects(self, httpx_mock, token_response):
-        """The CLI follows redirects, so a slash redirect doesn't break a command.
+    def test_a_redirect_stops_the_command_and_names_the_location(
+        self, httpx_mock, token_response
+    ):
+        """A redirect fails cleanly, naming where the API pointed.
 
-        The library refuses redirects by default; the CLI opts back in, since
-        the API redirects between slashed and unslashed collection paths.
+        The CLI doesn't follow redirects either. A BLUECORE_URL of http:// is
+        the usual cause, so the user needs the https:// Location to fix it.
         """
         token_response()
+        location = f"{API_URL}/works/w1/"
         httpx_mock.add_response(
             url=f"{API_URL}/works/w1",
-            status_code=307,
-            headers={"Location": f"{API_URL}/works/w1/"},
+            status_code=301,
+            headers={"Location": location},
         )
-        httpx_mock.add_response(url=f"{API_URL}/works/w1/", json=WORK_GRAPH)
 
         result = invoke("work", "view", "w1")
 
-        assert result.exit_code == 0, result.output
-        assert "Le mal joli" in result.stdout
+        assert result.exit_code == 1
+        assert location in result.output
+        assert not httpx_mock.get_requests(url=location)
 
     def test_view_with_json_emits_parseable_output(self, httpx_mock, token_response):
         token_response()

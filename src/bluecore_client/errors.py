@@ -58,12 +58,11 @@ class PermissionDenied(APIError):
 
 
 class Redirected(APIError):
-    """The API answered with a redirect the client was not told to follow.
+    """The API answered with a redirect, which the client never follows.
 
-    Not following is the default, because a redirect would carry the caller's
-    token to whatever host ``Location`` names. ``location`` is where the API
-    pointed, and ``response`` is the 3xx itself, for a caller that wants to
-    decide for itself.
+    The client's paths match the API's routes, so a redirect usually means
+    the configured URL is wrong, such as ``http://`` instead of ``https://``.
+    ``location`` is where the API pointed, and ``response`` is the 3xx itself.
     """
 
     def __init__(
@@ -116,13 +115,13 @@ def _detail(response: httpx.Response) -> str:
 
 def raise_for_status(response: httpx.Response) -> None:
     """Raise the most specific error that fits ``response``."""
-    if response.is_redirect:  # False if follow_redirects=True
+    if response.is_redirect:
         request = response.request
         location = response.headers["Location"]
         raise Redirected(
-            f"{response.status_code} redirect to {location} was not followed "
-            f"({request.method} {request.url}); pass follow_redirects=True to "
-            "BluecoreClient to follow it",
+            f"{response.status_code} redirect to {location} "
+            f"({request.method} {request.url}); check that the Blue Core URL "
+            "is correct, e.g. https rather than http",
             location=location,
             status_code=response.status_code,
             response=response,

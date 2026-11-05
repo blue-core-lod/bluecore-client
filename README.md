@@ -289,10 +289,10 @@ with BluecoreClient() as client:
     ...
 ```
 
-Redirects aren't followed unless you ask. A redirect can re-send your token
-and request body somewhere you didn't choose, or quietly turn a POST into a
-GET, so a 3xx raises `Redirected` instead. Pass `follow_redirects=True` if you
-want them followed; the `bluecore` command does.
+Redirects are never followed. The client's paths match the API's routes, so a
+3xx almost always means the URL is wrong, such as `http://` where the API
+wants `https://`, and following it could quietly turn a POST into a GET. The
+client raises `Redirected` instead, with the `location` the API pointed to.
 
 ## Reading
 

@@ -63,9 +63,10 @@ class BluecoreClient:
     Pass ``anonymous=True`` to skip authentication entirely, which works for
     another deployment's public read endpoints.
 
-    Redirects are not followed unless ``follow_redirects=True``, since a
-    redirect would send the token to whatever host the API names. An
-    unfollowed redirect raises :class:`~bluecore_client.errors.Redirected`.
+    Redirects are never followed. The client's paths match the API's routes,
+    so a redirect means the configured URL is wrong (``http://`` rather than
+    ``https://``, say) and raises :class:`~bluecore_client.errors.Redirected`
+    with the ``Location`` the server gave.
     """
 
     def __init__(
@@ -83,7 +84,6 @@ class BluecoreClient:
         load_dotenv: bool = True,
         anonymous: bool = False,
         event_hooks: dict[str, list] | None = None,
-        follow_redirects: bool = False,
     ):
         self.config: Config = config_module.resolve(
             api_url=api_url,
@@ -107,10 +107,9 @@ class BluecoreClient:
             auth=self.auth,
             timeout=timeout,
             transport=transport,
-            # Off by default: a followed redirect can re-send the token and
-            # body, or turn a POST into a GET. The CLI turns it on, since the
-            # API redirects between slashed and unslashed collection paths.
-            follow_redirects=follow_redirects,
+            # Never follow: on a 301/302 httpx turns a POST into a GET and
+            # drops the body. raise_for_status() raises Redirected instead.
+            follow_redirects=False,
             event_hooks=event_hooks or {},
         )
 

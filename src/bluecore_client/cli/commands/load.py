@@ -98,12 +98,7 @@ def load_profiles(
 
     target = client(require_auth=True)
     # The remote read hits a public endpoint, so don't try to log in there.
-    source = BluecoreClient(
-        bluecore_url=host,
-        anonymous=True,
-        load_dotenv=False,
-        follow_redirects=True,
-    )
+    source = BluecoreClient(bluecore_url=host, anonymous=True, load_dotenv=False)
 
     loaded = 0
     try:
